@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>GARGANTUA — Schwarzschild Black Hole Raytracer</title>
+<meta name="description" content="Real-time full-screen Schwarzschild geodesic raytracer with a physically integrated accretion disk, photon ring and lensed starfield." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%23000'/%3E%3Ccircle cx='16' cy='16' r='15' fill='none' stroke='%23ffb060' stroke-width='1.4'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%23000'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="css/style.css" />
+<script type="importmap">
+{
+  "imports": {
+    "three": "./lib/three/build/three.module.min.js",
+    "three/addons/": "./lib/three/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<canvas id="glcanvas" aria-label="Gargantua black hole raytracer render surface"></canvas>
+
+<div id="loading" role="status">
+  <div class="loading-inner">
+    <div class="loading-ring"></div>
+    <div class="loading-text">COMPILING SPACETIME<span class="dots">...</span></div>
+  </div>
+</div>
+
+<div id="webgl-error" hidden role="alert">
+  <div class="webgl-error-inner">
+    <h1>Rendering unavailable</h1>
+    <p id="webgl-error-msg">This browser / GPU could not initialize the required WebGL2 context.</p>
+  </div>
+</div>
+
+<div id="app" hidden>
+
+  <header id="titlecard">
+    <h1>GARGANTUA</h1>
+    <p>Schwarzschild geodesic raytracer</p>
+  </header>
+
+  <section id="hud" aria-label="Telemetry heads-up display">
+    <div class="hud-row"><span class="k">FPS</span><span class="v" id="hud-fps">--</span></div>
+    <div class="hud-row"><span class="k">FRAME MS</span><span class="v" id="hud-ms">--</span></div>
+    <div class="hud-row"><span class="k">R<sub>s</sub></span><span class="v" id="hud-rs">--</span></div>
+    <div class="hud-row"><span class="k">CAM DIST</span><span class="v" id="hud-dist">--</span></div>
+    <div class="hud-row"><span class="k">CAM DIST / R<sub>s</sub></span><span class="v" id="hud-distrs">--</span></div>
+    <div class="hud-row"><span class="k">PHOTON SPHERE</span><span class="v" id="hud-photon">--</span></div>
+    <div class="hud-row"><span class="k">ISCO</span><span class="v" id="hud-isco">--</span></div>
+    <div class="hud-row"><span class="k">g CENTER</span><span class="v" id="hud-g">--</span></div>
+    <div class="hud-row"><span class="k">MAX STEPS</span><span class="v" id="hud-steps">--</span></div>
+    <div class="hud-row"><span class="k">QUALITY</span><span class="v" id="hud-quality">--</span></div>
+    <div class="hud-row"><span class="k">RES</span><span class="v" id="hud-res">--</span></div>
+    <div class="hud-row"><span class="k">DEBUG VIEW</span><span class="v" id="hud-debug">0 · final</span></div>
+    <div class="hud-row"><span class="k">SIM TIME</span><span class="v" id="hud-time">--</span></div>
+  </section>
+
+  <nav id="presets" aria-label="Camera presets">
+    <button data-preset="0" class="preset-btn active" title="Shift+1">⇧1 · Approach</button>
+    <button data-preset="1" class="preset-btn" title="Shift+2">⇧2 · Photon Ring</button>
+    <button data-preset="2" class="preset-btn" title="Shift+3">⇧3 · Disk Grazing</button>
+    <button data-preset="3" class="preset-btn" title="Shift+4">⇧4 · Polar Overview</button>
+    <button id="cinematic-toggle" class="preset-btn cinematic" title="c">▶ Cinematic</button>
+  </nav>
+
+  <button id="panel-toggle" aria-label="Toggle control panel" title="Toggle controls (U)">☰ CONTROLS</button>
+
+  <aside id="panel" aria-label="Parameter controls">
+    <div class="panel-header">
+      <h2>PARAMETERS</h2>
+      <button id="panel-close" aria-label="Close panel">✕</button>
+    </div>
+    <div class="panel-scroll" id="panel-body"></div>
+    <div class="panel-footer">
+      <button id="reset-btn" title="Reset all parameters (R)">Reset</button>
+      <button id="randomize-btn" title="Randomize disk look">Randomize</button>
+      <button id="screenshot-btn" title="Save PNG (S)">Screenshot</button>
+    </div>
+  </aside>
+
+  <div id="quality-audio-bar">
+    <div class="qa-group" role="group" aria-label="Quality profile">
+      <button data-quality="low" class="q-btn">LOW</button>
+      <button data-quality="medium" class="q-btn active">MED</button>
+      <button data-quality="high" class="q-btn">HIGH</button>
+    </div>
+    <button id="audio-toggle" class="qa-toggle" title="Toggle synchronized audio (M)">🔇 AUDIO</button>
+    <button id="hud-toggle" class="qa-toggle" title="Toggle HUD (H)">HUD</button>
+    <button id="fullscreen-toggle" class="qa-toggle" title="Toggle fullscreen (F)">⛶</button>
+  </div>
+
+  <div id="debug-strip" aria-label="Debug views">
+    <span class="ds-label">DEBUG 0–9</span>
+    <div id="debug-buttons"></div>
+  </div>
+
+  <div id="hint" aria-hidden="true">drag orbit · scroll zoom · right-drag pan · 0–9 debug · space pause · shift+1–4 presets · c cinematic · h hud · u controls · s screenshot · r reset · m audio · f fullscreen · q quality</div>
+
+</div>
+
+<canvas id="screenshot-canvas" hidden></canvas>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
