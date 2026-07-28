@@ -1,0 +1,46 @@
+[
+  {
+    "uuid": "conv-0001",
+    "name": "Project planning",
+    "created_at": "2026-01-15T10:00:00Z",
+    "chat_messages": [
+      {
+        "sender": "human",
+        "created_at": "2026-01-15T10:00:00Z",
+        "text": "Hey, my name is Jane Sample and I'm based in Austin, TX. I run a small agency called WidgetWorks. You can reach me at jane.sample@example.com."
+      },
+      {
+        "sender": "assistant",
+        "created_at": "2026-01-15T10:00:05Z",
+        "text": "Got it, nice to meet you Jane. How can I help with WidgetWorks today?"
+      },
+      {
+        "sender": "human",
+        "created_at": "2026-01-15T10:01:00Z",
+        "text": "From now on, please don't use emojis in your responses, and always format code blocks with the language tag. I hate when responses are padded with fluff."
+      },
+      {
+        "sender": "human",
+        "created_at": "2026-01-15T10:05:00Z",
+        "text": "We're building a SaaS called Proteum for scheduling. It's hosted on Vercel with a Supabase backend, still in early beta."
+      }
+    ]
+  },
+  {
+    "uuid": "conv-0002",
+    "name": "Weekend chat",
+    "created_at": "2026-02-02T09:00:00Z",
+    "chat_messages": [
+      {
+        "sender": "human",
+        "created_at": "2026-02-02T09:00:00Z",
+        "text": "Random note: my dog Biscuit turned 5 this week. Also my daughter is 9 years old and loves robotics."
+      },
+      {
+        "sender": "assistant",
+        "created_at": "2026-02-02T09:00:10Z",
+        "text": "That's lovely to hear! Robotics at 9 is a great start."
+      }
+    ]
+  }
+]
