@@ -1,0 +1,1230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Apex Trading Command Center</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page:           #f9f9f7;
+    --surface-1:      #fcfcfb;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #6f6d67;
+    --grid:           #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --accent:         #2a78d6;   /* series blue */
+    --accent-track:   #cde2fb;   /* blue ramp step 100 */
+    --neg:            #e34948;   /* series red (diverging pole) */
+    --status-good:    #0ca30c;
+    --status-warn:    #fab219;
+    --status-crit:    #d03b3b;
+    --delta-good:     #006300;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --page:           #0d0d0d;
+      --surface-1:      #1a1a19;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --grid:           #2c2c2a;
+      --baseline:       #383835;
+      --border:         rgba(255,255,255,0.10);
+      --accent:         #3987e5;
+      --accent-track:   #184f95;
+      --neg:            #e66767;
+      --status-crit:    #e66767;
+      --delta-good:     #0ca30c;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page:           #0d0d0d;
+    --surface-1:      #1a1a19;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --grid:           #2c2c2a;
+    --baseline:       #383835;
+    --border:         rgba(255,255,255,0.10);
+    --accent:         #3987e5;
+    --accent-track:   #184f95;
+    --neg:            #e66767;
+    --status-crit:    #e66767;
+    --delta-good:     #0ca30c;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--text-primary);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 20px 16px 64px; }
+
+  header.top { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+  header.top h1 { font-size: 22px; font-weight: 650; margin: 0; }
+  header.top .sub { color: var(--text-secondary); font-size: 13px; }
+  header.top .spacer { flex: 1; }
+  button.ghost {
+    background: none; border: 1px solid var(--border); color: var(--text-secondary);
+    border-radius: 8px; padding: 5px 11px; font: inherit; font-size: 13px; cursor: pointer;
+  }
+  button.ghost:hover { color: var(--text-primary); }
+
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .card h2 { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin: 0 0 10px; letter-spacing: .01em; }
+  .card .hint { color: var(--text-muted); font-size: 12px; margin-top: 8px; }
+
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 14px 0; }
+  .grid2 { display: grid; grid-template-columns: 3fr 2fr; gap: 12px; margin: 14px 0; }
+  @media (max-width: 860px) { .grid3, .grid2 { grid-template-columns: 1fr; } }
+
+  /* forms */
+  label.f { display: block; font-size: 12px; color: var(--text-secondary); margin: 8px 0 3px; }
+  input[type=number], input[type=text], input[type=date], select, textarea {
+    width: 100%; background: var(--page); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px; font: inherit; font-size: 14px;
+  }
+  input:focus-visible, select:focus-visible, button:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 1px;
+  }
+  .frow { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+  .frow3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 10px; }
+  button.primary {
+    background: var(--accent); color: #fff; border: none; border-radius: 8px;
+    padding: 9px 14px; font: inherit; font-weight: 600; cursor: pointer; margin-top: 12px;
+  }
+
+  /* sizer output */
+  .sizeout { margin-top: 12px; border-top: 1px solid var(--grid); padding-top: 10px; font-size: 14px; }
+  .sizeout .big { font-size: 26px; font-weight: 650; }
+  .sizeout .row { display: flex; justify-content: space-between; padding: 2px 0; color: var(--text-secondary); }
+  .sizeout .row b { color: var(--text-primary); font-weight: 600; }
+  .warnline { display: flex; gap: 6px; align-items: flex-start; font-size: 13px; margin-top: 8px; }
+
+  /* meter */
+  .meter { height: 14px; border-radius: 7px; background: var(--accent-track); overflow: hidden; margin: 10px 0 6px; }
+  .meter > div { height: 100%; border-radius: 7px; background: var(--accent); width: 0%; transition: width .2s; }
+  .meterlab { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-secondary); }
+  .statuschip { font-weight: 600; }
+
+  /* filter row */
+  .filters { display: flex; gap: 6px; align-items: center; margin: 18px 0 10px; flex-wrap: wrap; }
+  .filters .flabel { font-size: 13px; color: var(--text-secondary); margin-right: 4px; }
+  .filters button {
+    background: none; border: 1px solid var(--border); color: var(--text-secondary);
+    border-radius: 999px; padding: 4px 12px; font: inherit; font-size: 13px; cursor: pointer;
+  }
+  .filters button[aria-pressed="true"] {
+    border-color: var(--accent); color: var(--text-primary); font-weight: 600;
+  }
+  .filters button[aria-pressed="true"]::before { content: "✓ "; font-weight: 700; }
+
+  /* KPI tiles */
+  .kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+  @media (max-width: 1000px) { .kpis { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 620px)  { .kpis { grid-template-columns: repeat(2, 1fr); } }
+  .tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .tile .lab { font-size: 12px; color: var(--text-secondary); }
+  .tile .val { font-size: 24px; font-weight: 650; margin-top: 2px; }
+  .tile .sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+  /* charts */
+  .chartcard { position: relative; }
+  .chartbox { position: relative; }
+  .chartbox svg { display: block; width: 100%; }
+  .tooltip {
+    position: absolute; pointer-events: none; z-index: 5; display: none;
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px;
+    padding: 7px 10px; font-size: 13px; box-shadow: 0 2px 10px rgba(0,0,0,.12); max-width: 240px;
+  }
+  .tooltip .tv { font-weight: 650; font-size: 14px; }
+  .tooltip .tk { color: var(--text-secondary); font-size: 12px; }
+  .tooltip .key { display: inline-block; width: 12px; height: 0; border-top: 3px solid var(--accent); border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+  .empty { color: var(--text-muted); font-size: 14px; padding: 26px 0; text-align: center; }
+  svg text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .axis-tick { font-size: 11px; fill: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .direct-label { font-size: 12px; fill: var(--text-primary); font-weight: 600; }
+  .bar-mark { cursor: default; }
+  .bar-mark:hover, .bar-mark:focus { opacity: .82; }
+
+  /* journal table */
+  .tablewrap { overflow-x: auto; margin-top: 12px; }
+  table.journal { border-collapse: collapse; width: 100%; font-size: 13px; }
+  table.journal th {
+    text-align: left; color: var(--text-secondary); font-weight: 600;
+    border-bottom: 1px solid var(--baseline); padding: 6px 8px; white-space: nowrap;
+  }
+  table.journal td { border-bottom: 1px solid var(--grid); padding: 6px 8px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  table.journal td.num { text-align: right; }
+  table.journal th.num { text-align: right; }
+  .pnl-pos { color: var(--delta-good); font-weight: 600; }
+  .pnl-neg { color: var(--status-crit); font-weight: 600; }
+  button.mini { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 13px; padding: 2px 6px; }
+  button.mini:hover { color: var(--status-crit); }
+  .jactions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .jactions .right { margin-left: auto; }
+
+  /* checklist */
+  .check { display: flex; gap: 9px; align-items: flex-start; padding: 6px 0; font-size: 14px; }
+  .check input { width: 16px; height: 16px; margin-top: 2px; accent-color: var(--accent); }
+  .check span { color: var(--text-primary); }
+  .checkdone { color: var(--text-secondary); font-size: 13px; margin-top: 8px; }
+
+  .footnote { color: var(--text-muted); font-size: 12px; margin-top: 26px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <h1>Apex Trading Command Center</h1>
+    <span class="sub">discipline dashboard · data stays in your browser</span>
+    <span class="spacer"></span>
+    <button class="ghost" id="themeBtn" type="button">Toggle theme</button>
+  </header>
+
+  <div class="grid3">
+    <!-- Settings -->
+    <section class="card">
+      <h2>Account settings</h2>
+      <div class="frow">
+        <div>
+          <label class="f" for="setCapital">Starting capital ($)</label>
+          <input type="number" id="setCapital" min="0" step="1" value="300">
+        </div>
+        <div>
+          <label class="f" for="setAcctType">Account type</label>
+          <select id="setAcctType">
+            <option value="cash">Cash</option>
+            <option value="margin">Margin</option>
+          </select>
+        </div>
+      </div>
+      <div class="frow">
+        <div>
+          <label class="f" for="setRiskPct">Risk per trade (%)</label>
+          <input type="number" id="setRiskPct" min="0.1" max="100" step="0.1" value="1">
+        </div>
+        <div>
+          <label class="f" for="setDayLossPct">Daily loss limit (%)</label>
+          <input type="number" id="setDayLossPct" min="0.5" max="100" step="0.5" value="3">
+        </div>
+      </div>
+      <p class="hint" id="acctHint"></p>
+    </section>
+
+    <!-- Position sizer -->
+    <section class="card">
+      <h2>Position size calculator</h2>
+      <div class="frow3">
+        <div>
+          <label class="f" for="psEntry">Entry</label>
+          <input type="number" id="psEntry" min="0" step="any" placeholder="10.00">
+        </div>
+        <div>
+          <label class="f" for="psStop">Stop</label>
+          <input type="number" id="psStop" min="0" step="any" placeholder="9.70">
+        </div>
+        <div>
+          <label class="f" for="psTarget">Target</label>
+          <input type="number" id="psTarget" min="0" step="any" placeholder="10.90">
+        </div>
+      </div>
+      <div class="sizeout" id="psOut" aria-live="polite">
+        <div class="empty" style="padding:10px 0">Enter an entry and a stop.</div>
+      </div>
+    </section>
+
+    <!-- Daily guardrails -->
+    <section class="card">
+      <h2>Today’s guardrails</h2>
+      <div class="meterlab"><span>Daily loss used</span><span id="lossUsedTxt">—</span></div>
+      <div class="meter" role="img" id="lossMeter" aria-label="Daily loss limit usage">
+        <div id="lossFill"></div>
+      </div>
+      <div class="meterlab">
+        <span class="statuschip" id="lossStatus"></span>
+        <span id="lossLimitTxt"></span>
+      </div>
+      <div id="pdtBlock" style="margin-top:14px">
+        <div class="meterlab"><span id="pdtLabel">Day trades (rolling 5 business days)</span><span id="pdtCount">0 / 3</span></div>
+        <p class="hint" id="pdtHint"></p>
+      </div>
+    </section>
+  </div>
+
+  <!-- Open positions / holdings -->
+  <section class="card" style="margin-top:2px">
+    <h2>Open positions — what you hold right now</h2>
+    <form id="posForm">
+      <div class="frow3">
+        <div>
+          <label class="f" for="pSymbol">Symbol</label>
+          <input type="text" id="pSymbol" required maxlength="12" placeholder="AAPL" autocomplete="off">
+        </div>
+        <div>
+          <label class="f" for="pSide">Side</label>
+          <select id="pSide">
+            <option value="long">Long</option>
+            <option value="short">Short</option>
+          </select>
+        </div>
+        <div>
+          <label class="f" for="pQty">Quantity</label>
+          <input type="number" id="pQty" required min="0" step="any" placeholder="10">
+        </div>
+      </div>
+      <div class="frow3">
+        <div>
+          <label class="f" for="pCost">Avg cost</label>
+          <input type="number" id="pCost" required min="0" step="any" placeholder="10.00">
+        </div>
+        <div>
+          <label class="f" for="pStop">Stop</label>
+          <input type="number" id="pStop" min="0" step="any" placeholder="9.70">
+        </div>
+        <div>
+          <label class="f" for="pLast">Last price</label>
+          <input type="number" id="pLast" min="0" step="any" placeholder="10.20">
+        </div>
+      </div>
+      <button class="primary" type="submit">Add position</button>
+    </form>
+    <div class="tablewrap">
+      <table class="journal" id="posTable">
+        <thead>
+          <tr>
+            <th>Symbol</th><th>Side</th>
+            <th class="num">Qty</th><th class="num">Avg cost</th>
+            <th class="num">Last</th><th class="num">Value</th>
+            <th class="num">Unrealized</th><th class="num">Risk to stop</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="posBody"></tbody>
+      </table>
+      <div class="empty" id="posEmpty">Nothing held. Add a position when you enter — close it here and it logs itself to the journal.</div>
+    </div>
+    <div class="sizeout" id="posTotals" style="display:none">
+      <div class="row"><span>Total market value</span><b id="posValTotal"></b></div>
+      <div class="row"><span>Total unrealized P&amp;L</span><b id="posPnlTotal"></b></div>
+      <div class="row"><span>Account heat (open risk to stops)</span><b id="posHeat"></b></div>
+    </div>
+    <p class="hint">Update “Last” by typing in the table — this page works offline, so prices are yours to refresh. Closing a position asks for the exit price and writes the trade to the journal automatically.</p>
+  </section>
+
+  <!-- Filter row: scopes everything below -->
+  <div class="filters" role="group" aria-label="Date range">
+    <span class="flabel">Range</span>
+    <button type="button" data-range="all" aria-pressed="true">All time</button>
+    <button type="button" data-range="7" aria-pressed="false">Last 7 days</button>
+    <button type="button" data-range="30" aria-pressed="false">Last 30 days</button>
+    <button type="button" data-range="90" aria-pressed="false">Last 90 days</button>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid2">
+    <section class="card chartcard">
+      <h2>Equity curve</h2>
+      <div class="chartbox" id="equityBox"></div>
+      <div class="tooltip" id="equityTip"></div>
+    </section>
+    <section class="card chartcard">
+      <h2>R-multiple per trade</h2>
+      <div class="chartbox" id="rBox"></div>
+      <div class="tooltip" id="rTip"></div>
+    </section>
+  </div>
+
+  <!-- Journal -->
+  <section class="card">
+    <h2>Trade journal</h2>
+    <form id="tradeForm">
+      <div class="frow3">
+        <div>
+          <label class="f" for="tDate">Date</label>
+          <input type="date" id="tDate" required>
+        </div>
+        <div>
+          <label class="f" for="tSymbol">Symbol</label>
+          <input type="text" id="tSymbol" required maxlength="12" placeholder="AAPL" autocomplete="off">
+        </div>
+        <div>
+          <label class="f" for="tSide">Side</label>
+          <select id="tSide">
+            <option value="long">Long</option>
+            <option value="short">Short</option>
+          </select>
+        </div>
+      </div>
+      <div class="frow3">
+        <div>
+          <label class="f" for="tQty">Quantity</label>
+          <input type="number" id="tQty" required min="0" step="any" placeholder="10">
+        </div>
+        <div>
+          <label class="f" for="tEntry">Entry price</label>
+          <input type="number" id="tEntry" required min="0" step="any" placeholder="10.00">
+        </div>
+        <div>
+          <label class="f" for="tExit">Exit price</label>
+          <input type="number" id="tExit" required min="0" step="any" placeholder="10.40">
+        </div>
+      </div>
+      <div class="frow3">
+        <div>
+          <label class="f" for="tStop">Planned stop</label>
+          <input type="number" id="tStop" min="0" step="any" placeholder="9.70">
+        </div>
+        <div>
+          <label class="f" for="tFees">Fees ($)</label>
+          <input type="number" id="tFees" min="0" step="any" value="0">
+        </div>
+        <div>
+          <label class="f" for="tSetup">Setup / signal source</label>
+          <input type="text" id="tSetup" maxlength="40" placeholder="oracle-algo" autocomplete="off">
+        </div>
+      </div>
+      <div class="frow">
+        <div>
+          <label class="f" for="tNotes">Notes</label>
+          <input type="text" id="tNotes" maxlength="200" placeholder="Followed plan? What did you see?" autocomplete="off">
+        </div>
+        <div style="display:flex;align-items:flex-end;gap:14px;padding-bottom:2px">
+          <label class="check" style="padding:0"><input type="checkbox" id="tDayTrade" checked><span>Day trade (opened &amp; closed same day)</span></label>
+        </div>
+      </div>
+      <button class="primary" type="submit">Log trade</button>
+    </form>
+
+    <div class="tablewrap">
+      <table class="journal" id="journalTable">
+        <thead>
+          <tr>
+            <th>Date</th><th>Symbol</th><th>Side</th>
+            <th class="num">Qty</th><th class="num">Entry</th><th class="num">Exit</th>
+            <th class="num">Stop</th><th class="num">Fees</th>
+            <th class="num">P&amp;L</th><th class="num">R</th>
+            <th>Setup</th><th>Notes</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="journalBody"></tbody>
+      </table>
+      <div class="empty" id="journalEmpty">No trades logged yet. Every trade — paper or real — gets a row. That’s the rule.</div>
+    </div>
+
+    <div class="jactions">
+      <button class="ghost" type="button" id="exportBtn">Export CSV</button>
+      <button class="ghost" type="button" id="importBtn">Import CSV</button>
+      <input type="file" id="importFile" accept=".csv,text/csv" style="display:none">
+      <button class="ghost right" type="button" id="clearBtn">Delete all trades…</button>
+    </div>
+    <p class="hint">CSV matches <code>trading/journal/trades.csv</code> in the repo — export here, commit it, and the Claude skills (<code>/weekly-review</code>, <code>/trade-journal</code>) can analyze it.</p>
+  </section>
+
+  <!-- Checklist -->
+  <section class="card" style="margin-top:14px">
+    <h2>Pre-market checklist <span id="checkDate" style="font-weight:400;color:var(--text-muted)"></span></h2>
+    <div id="checklist"></div>
+    <div class="checkdone" id="checkSummary"></div>
+  </section>
+
+  <p class="footnote">
+    Educational tool — not financial advice. Day trading is high risk and most retail day traders lose
+    money. The pattern day trader (PDT) rule limits margin accounts under $25,000 to 3 day trades per 5
+    rolling business days; cash accounts are exempt but must trade with settled funds (T+1).
+    All data is stored locally in this browser (localStorage) — export CSV to back it up.
+  </p>
+</div>
+
+<script>
+"use strict";
+(() => {
+  // ---------- storage ----------
+  const LS = { trades: "apexTrades.v1", settings: "apexSettings.v1", theme: "apexTheme.v1", checks: "apexChecks.v1", positions: "apexPositions.v1" };
+  const load = (k, fb) => { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? fb; } catch { return fb; } };
+  const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+
+  let trades = load(LS.trades, []);            // [{id,date,symbol,side,qty,entry,exit,stop,fees,dayTrade,setup,notes}]
+  let positions = load(LS.positions, []);      // [{id,symbol,side,qty,cost,stop,last}]
+  let settings = Object.assign({ capital: 300, riskPct: 1, dayLossPct: 3, acctType: "cash" }, load(LS.settings, {}));
+  let range = "all";
+
+  // ---------- theme ----------
+  const themeBtn = document.getElementById("themeBtn");
+  const savedTheme = load(LS.theme, null);
+  if (savedTheme === "dark" || savedTheme === "light") document.documentElement.dataset.theme = savedTheme;
+  themeBtn.addEventListener("click", () => {
+    const cur = document.documentElement.dataset.theme ||
+      (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    const next = cur === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    save(LS.theme, next);
+    renderAll();
+  });
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    if (!document.documentElement.dataset.theme) renderAll();
+  });
+
+  // ---------- helpers ----------
+  const $ = id => document.getElementById(id);
+  const todayISO = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  const fmtMoney = (v, compact) => {
+    const sign = v < 0 ? "−" : "";
+    const a = Math.abs(v);
+    if (compact && a >= 100000) return `${sign}$${(a / 1000).toFixed(0)}K`;
+    if (compact && a >= 10000)  return `${sign}$${(a / 1000).toFixed(1)}K`;
+    return `${sign}$${a.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+  const fmtNum = v => v.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  const cssVar = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+  const pnlOf = t => {
+    const dir = t.side === "short" ? -1 : 1;
+    return dir * (t.exit - t.entry) * t.qty - (t.fees || 0);
+  };
+  const rOf = t => {
+    if (t.stop == null || !isFinite(t.stop)) return null;
+    const perShare = Math.abs(t.entry - t.stop);
+    if (perShare <= 0) return null;
+    return pnlOf(t) / (perShare * t.qty);
+  };
+  const sortedTrades = () => [...trades].sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : a.id - b.id);
+  const inRange = t => {
+    if (range === "all") return true;
+    const days = Number(range);
+    const cutoff = new Date(); cutoff.setHours(0, 0, 0, 0); cutoff.setDate(cutoff.getDate() - (days - 1));
+    return new Date(t.date + "T00:00:00") >= cutoff;
+  };
+
+  // last N business days (ISO strings), most recent first, including today if weekday
+  const lastBusinessDays = n => {
+    const out = []; const d = new Date();
+    while (out.length < n) {
+      const dow = d.getDay();
+      if (dow !== 0 && dow !== 6) {
+        out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+      }
+      d.setDate(d.getDate() - 1);
+    }
+    return out;
+  };
+
+  // ---------- settings ----------
+  const bindSetting = (id, key, num) => {
+    const el = $(id);
+    el.value = settings[key];
+    el.addEventListener("input", () => {
+      const v = num ? parseFloat(el.value) : el.value;
+      if (num) {
+        if (!isFinite(v)) return;
+        const min = parseFloat(el.min), max = parseFloat(el.max);
+        if ((isFinite(min) && v < min) || (isFinite(max) && v > max)) return;
+      }
+      settings[key] = v;
+      save(LS.settings, settings);
+      renderAll();
+    });
+  };
+  bindSetting("setCapital", "capital", true);
+  bindSetting("setRiskPct", "riskPct", true);
+  bindSetting("setDayLossPct", "dayLossPct", true);
+  bindSetting("setAcctType", "acctType", false);
+
+  // ---------- position sizer ----------
+  const equityNow = () => settings.capital + trades.reduce((s, t) => s + pnlOf(t), 0);
+  const renderSizer = () => {
+    const out = $("psOut");
+    const entry = parseFloat($("psEntry").value);
+    const stop = parseFloat($("psStop").value);
+    const target = parseFloat($("psTarget").value);
+    out.replaceChildren();
+    if (!isFinite(entry) || !isFinite(stop) || entry <= 0) {
+      const d = document.createElement("div"); d.className = "empty"; d.style.padding = "10px 0";
+      d.textContent = "Enter an entry and a stop."; out.appendChild(d); return;
+    }
+    const perShare = Math.abs(entry - stop);
+    if (perShare <= 0) {
+      const d = document.createElement("div"); d.className = "empty"; d.style.padding = "10px 0";
+      d.textContent = "Stop must differ from entry."; out.appendChild(d); return;
+    }
+    const eq = equityNow();
+    const riskBudget = eq * (settings.riskPct / 100);
+    const byRisk = Math.floor(riskBudget / perShare + 1e-9);
+    const byCash = Math.floor(eq / entry + 1e-9);    // cash account: no leverage
+    const shares = Math.max(0, Math.min(byRisk, settings.acctType === "cash" ? byCash : byRisk));
+    const dollarRisk = shares * perShare;
+
+    const big = document.createElement("div");
+    big.className = "big";
+    big.textContent = `${shares.toLocaleString("en-US")} share${shares === 1 ? "" : "s"}`;
+    out.appendChild(big);
+
+    const addRow = (k, v, strong) => {
+      const r = document.createElement("div"); r.className = "row";
+      const kk = document.createElement("span"); kk.textContent = k;
+      const vv = document.createElement(strong ? "b" : "span"); vv.textContent = v;
+      r.append(kk, vv); out.appendChild(r);
+    };
+    addRow("Risk budget", `${fmtMoney(riskBudget)} (${settings.riskPct}% of ${fmtMoney(eq)})`);
+    addRow("Risk per share", fmtMoney(perShare));
+    addRow("Dollar risk at stop", fmtMoney(dollarRisk), true);
+    addRow("Position cost", fmtMoney(shares * entry));
+    if (isFinite(target) && target > 0) {
+      const reward = Math.abs(target - entry);
+      addRow("Reward : risk", `${(reward / perShare).toFixed(2)} : 1`, true);
+    }
+    if (byCash < byRisk && settings.acctType === "cash") {
+      const w = document.createElement("div"); w.className = "warnline";
+      w.textContent = "⚠ Buying power caps this position below your risk budget — your stop distance is wider than this account can use.";
+      w.style.color = cssVar("--text-secondary");
+      out.appendChild(w);
+    }
+    if (shares === 0) {
+      const w = document.createElement("div"); w.className = "warnline";
+      w.textContent = "⚠ Zero shares fit this risk budget. Tighter stop, cheaper ticker, or skip the trade — do not size up.";
+      w.style.color = cssVar("--status-crit");
+      out.appendChild(w);
+    }
+  };
+  ["psEntry", "psStop", "psTarget"].forEach(id => $(id).addEventListener("input", renderSizer));
+
+  // ---------- guardrails ----------
+  const renderGuardrails = () => {
+    const today = todayISO();
+    const todayPnl = trades.filter(t => t.date === today).reduce((s, t) => s + pnlOf(t), 0);
+    const limit = equityNow() > 0 ? (settings.capital + trades.filter(t => t.date !== today).reduce((s, t) => s + pnlOf(t), 0)) * (settings.dayLossPct / 100)
+                                  : settings.capital * (settings.dayLossPct / 100);
+    const lossUsed = Math.max(0, -todayPnl);
+    const pct = limit > 0 ? Math.min(100, (lossUsed / limit) * 100) : 0;
+    $("lossUsedTxt").textContent = `${fmtMoney(lossUsed)} of ${fmtMoney(limit)}`;
+    $("lossLimitTxt").textContent = todayPnl >= 0 ? `today’s P&L ${fmtMoney(todayPnl)}` : "";
+    const fill = $("lossFill");
+    fill.style.width = pct + "%";
+    const status = $("lossStatus");
+    let color, label;
+    if (pct >= 100)      { color = cssVar("--status-crit"); label = "⛔ STOP — limit hit, done for the day"; }
+    else if (pct >= 60)  { color = cssVar("--status-warn"); label = "⚠ Caution — one small trade from done"; }
+    else                 { color = cssVar("--accent");      label = "✓ Within limits"; }
+    fill.style.background = color;
+    status.textContent = label;
+    status.style.color = pct >= 100 ? cssVar("--status-crit") : cssVar("--text-secondary");
+    $("lossMeter").setAttribute("aria-label", `Daily loss limit usage: ${pct.toFixed(0)}%`);
+
+    // PDT
+    const window5 = new Set(lastBusinessDays(5));
+    const used = trades.filter(t => t.dayTrade && window5.has(t.date)).length;
+    if (settings.acctType === "margin") {
+      $("pdtLabel").textContent = "Day trades (rolling 5 business days)";
+      $("pdtCount").textContent = `${used} / 3`;
+      $("pdtCount").style.color = used >= 3 ? cssVar("--status-crit") : "";
+      $("pdtHint").textContent = used >= 3
+        ? "⛔ PDT limit reached — a 4th day trade can flag/freeze a margin account under $25K."
+        : "Margin account under $25K: max 3 day trades per 5 rolling business days (PDT rule).";
+    } else {
+      $("pdtLabel").textContent = "Day trades this week";
+      $("pdtCount").textContent = `${used}`;
+      $("pdtCount").style.color = "";
+      $("pdtHint").textContent = "Cash account: PDT rule doesn’t apply, but you can only trade settled cash (T+1). Spent buying power comes back the next business day after a sale.";
+    }
+    $("acctHint").textContent = settings.acctType === "cash"
+      ? "Cash account: no PDT limit, but funds must settle (T+1) before reuse."
+      : "Margin account under $25K: the PDT rule caps you at 3 day trades per 5 business days.";
+  };
+
+  // ---------- KPIs ----------
+  const stats = list => {
+    const closed = list.map(t => ({ t, pnl: pnlOf(t), r: rOf(t) }));
+    const n = closed.length;
+    const wins = closed.filter(x => x.pnl > 0);
+    const losses = closed.filter(x => x.pnl < 0);
+    const grossW = wins.reduce((s, x) => s + x.pnl, 0);
+    const grossL = Math.abs(losses.reduce((s, x) => s + x.pnl, 0));
+    const rs = closed.map(x => x.r).filter(r => r != null && isFinite(r));
+    let streak = 0;
+    for (let i = closed.length - 1; i >= 0; i--) {
+      const w = closed[i].pnl > 0;
+      if (streak === 0) { if (!w && closed[i].pnl >= 0) break; streak = w ? 1 : -1; }
+      else if (streak > 0 && w) streak++;
+      else if (streak < 0 && !w && closed[i].pnl < 0) streak--;
+      else break;
+    }
+    return {
+      n,
+      net: closed.reduce((s, x) => s + x.pnl, 0),
+      winRate: n ? (wins.length / n) * 100 : null,
+      pf: grossL > 0 ? grossW / grossL : (grossW > 0 ? Infinity : null),
+      expR: rs.length ? rs.reduce((s, r) => s + r, 0) / rs.length : null,
+      rCount: rs.length,
+      streak
+    };
+  };
+
+  const renderKpis = () => {
+    const list = sortedTrades().filter(inRange);
+    const s = stats(list);
+    const k = $("kpis");
+    k.replaceChildren();
+    const tile = (lab, val, sub, cls) => {
+      const d = document.createElement("div"); d.className = "tile";
+      const l = document.createElement("div"); l.className = "lab"; l.textContent = lab;
+      const v = document.createElement("div"); v.className = "val" + (cls ? " " + cls : ""); v.textContent = val;
+      d.append(l, v);
+      if (sub) { const su = document.createElement("div"); su.className = "sub"; su.textContent = sub; d.appendChild(su); }
+      k.appendChild(d);
+    };
+    tile("Account equity", fmtMoney(equityNow(), true), `started at ${fmtMoney(settings.capital, true)}`);
+    tile("Net P&L", (s.net >= 0 ? "+" : "") + fmtMoney(s.net, true).replace("−$", "−$"),
+      `${s.n} trade${s.n === 1 ? "" : "s"} in range`, s.net > 0 ? "pnl-pos" : s.net < 0 ? "pnl-neg" : "");
+    tile("Win rate", s.winRate == null ? "—" : `${s.winRate.toFixed(0)}%`, s.n ? `${s.n} closed` : "no trades yet");
+    tile("Expectancy", s.expR == null ? "—" : `${s.expR >= 0 ? "+" : ""}${s.expR.toFixed(2)}R`,
+      s.rCount ? `avg over ${s.rCount} with stops` : "log stops to unlock", s.expR > 0 ? "pnl-pos" : s.expR < 0 ? "pnl-neg" : "");
+    tile("Profit factor", s.pf == null ? "—" : (s.pf === Infinity ? "∞" : s.pf.toFixed(2)), "gross wins ÷ gross losses");
+    tile("Streak", s.streak === 0 ? "—" : `${Math.abs(s.streak)} ${s.streak > 0 ? "W" : "L"}`,
+      s.streak <= -2 ? "step away, review, come back" : " ");
+  };
+
+  // ---------- SVG chart helpers ----------
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (name, attrs) => {
+    const e = document.createElementNS(NS, name);
+    for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, v);
+    return e;
+  };
+  const niceTicks = (min, max, count) => {
+    if (min === max) { min -= 1; max += 1; }
+    const span = max - min;
+    const step0 = span / Math.max(1, count);
+    const mag = Math.pow(10, Math.floor(Math.log10(step0)));
+    let step = mag;
+    for (const m of [1, 2, 5, 10]) { if (mag * m >= step0) { step = mag * m; break; } }
+    const lo = Math.floor(min / step) * step;
+    const ticks = [];
+    for (let v = lo; v <= max + step * 0.001; v += step) if (v >= min - step * 0.001) ticks.push(v);
+    return ticks;
+  };
+  const showTip = (tip, box, x, y, rows) => {
+    tip.replaceChildren();
+    rows.forEach(([kind, text, keyColor]) => {
+      const d = document.createElement("div");
+      d.className = kind;
+      if (keyColor) {
+        const key = document.createElement("span"); key.className = "key"; key.style.borderTopColor = keyColor;
+        d.appendChild(key);
+      }
+      d.appendChild(document.createTextNode(text));
+      tip.appendChild(d);
+    });
+    tip.style.display = "block";
+    const bw = box.clientWidth;
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    let left = x + 14; if (left + tw > bw - 4) left = x - tw - 14;
+    let top = y - th - 8; if (top < 0) top = y + 14;
+    // tooltip's positioned ancestor is the card; offset by the chartbox's place in it
+    tip.style.left = (box.offsetLeft + Math.max(4, left)) + "px";
+    tip.style.top = (box.offsetTop + Math.max(0, top)) + "px";
+  };
+
+  // ---------- equity curve ----------
+  const renderEquity = () => {
+    const box = $("equityBox"), tip = $("equityTip");
+    box.replaceChildren(); tip.style.display = "none";
+    const list = sortedTrades().filter(inRange);
+    if (!list.length) {
+      const d = document.createElement("div"); d.className = "empty";
+      d.textContent = "Log trades to draw your equity curve.";
+      box.appendChild(d); return;
+    }
+    // baseline = capital plus P&L of trades BEFORE the range (so the curve is honest)
+    const before = sortedTrades().filter(t => !inRange(t)).filter(t => {
+      const first = list[0];
+      return t.date < first.date || (t.date === first.date && t.id < first.id);
+    });
+    let eq = settings.capital + before.reduce((s, t) => s + pnlOf(t), 0);
+    const pts = [{ eq, label: "Start", pnl: null, date: null }];
+    list.forEach(t => { eq += pnlOf(t); pts.push({ eq, label: t.symbol, pnl: pnlOf(t), date: t.date }); });
+
+    const W = Math.max(280, box.clientWidth), H = 240;
+    const padL = 52, padR = 46, padT = 14, padB = 24;
+    const iw = W - padL - padR, ih = H - padT - padB;
+    let lo = Math.min(...pts.map(p => p.eq)), hi = Math.max(...pts.map(p => p.eq));
+    if (lo === hi) { lo -= 1; hi += 1; }
+    const pad = (hi - lo) * 0.08; lo -= pad; hi += pad;
+    const X = i => padL + (pts.length === 1 ? 0 : (i / (pts.length - 1)) * iw);
+    const Y = v => padT + ih - ((v - lo) / (hi - lo)) * ih;
+
+    const svg = el("svg", { width: W, height: H, viewBox: `0 0 ${W} ${H}`, role: "img",
+      "aria-label": `Equity curve, ${list.length} trades, ending at ${fmtMoney(pts[pts.length - 1].eq)}` });
+
+    niceTicks(lo, hi, 4).forEach(v => {
+      svg.appendChild(el("line", { x1: padL, x2: W - padR, y1: Y(v), y2: Y(v), stroke: cssVar("--grid"), "stroke-width": 1 }));
+      const t = el("text", { x: padL - 8, y: Y(v) + 4, "text-anchor": "end", class: "axis-tick" });
+      t.textContent = "$" + Math.round(v).toLocaleString("en-US");
+      svg.appendChild(t);
+    });
+
+    const line = pts.map((p, i) => `${i ? "L" : "M"}${X(i).toFixed(1)},${Y(p.eq).toFixed(1)}`).join("");
+    const accent = cssVar("--accent");
+    svg.appendChild(el("path", { d: `${line}L${X(pts.length - 1).toFixed(1)},${(padT + ih).toFixed(1)}L${X(0).toFixed(1)},${(padT + ih).toFixed(1)}Z`,
+      fill: accent, opacity: 0.1, stroke: "none" }));
+    svg.appendChild(el("path", { d: line, fill: "none", stroke: accent, "stroke-width": 2,
+      "stroke-linejoin": "round", "stroke-linecap": "round" }));
+
+    // end marker: surface ring + dot + direct label
+    const li = pts.length - 1;
+    svg.appendChild(el("circle", { cx: X(li), cy: Y(pts[li].eq), r: 6, fill: cssVar("--surface-1") }));
+    svg.appendChild(el("circle", { cx: X(li), cy: Y(pts[li].eq), r: 4, fill: accent }));
+    const endLab = el("text", { x: X(li), y: Y(pts[li].eq) - 10, "text-anchor": "end", class: "direct-label" });
+    endLab.textContent = fmtMoney(pts[li].eq, true);
+    svg.appendChild(endLab);
+
+    // crosshair + hover
+    const cross = el("line", { y1: padT, y2: padT + ih, stroke: cssVar("--baseline"), "stroke-width": 1, visibility: "hidden" });
+    svg.appendChild(cross);
+    const hoverDotRing = el("circle", { r: 6, fill: cssVar("--surface-1"), visibility: "hidden" });
+    const hoverDot = el("circle", { r: 4, fill: accent, visibility: "hidden" });
+    svg.append(hoverDotRing, hoverDot);
+    const onMove = ev => {
+      const rect = svg.getBoundingClientRect();
+      const mx = (ev.clientX - rect.left) * (W / rect.width);
+      let best = 0, bd = Infinity;
+      pts.forEach((p, i) => { const d = Math.abs(X(i) - mx); if (d < bd) { bd = d; best = i; } });
+      const p = pts[best];
+      cross.setAttribute("x1", X(best)); cross.setAttribute("x2", X(best));
+      cross.setAttribute("visibility", "visible");
+      hoverDotRing.setAttribute("cx", X(best)); hoverDotRing.setAttribute("cy", Y(p.eq)); hoverDotRing.setAttribute("visibility", "visible");
+      hoverDot.setAttribute("cx", X(best)); hoverDot.setAttribute("cy", Y(p.eq)); hoverDot.setAttribute("visibility", "visible");
+      const rows = [["tv", fmtMoney(p.eq), accent]];
+      rows.push(["tk", p.date ? `${p.label} · ${p.date}` : "Starting equity"]);
+      if (p.pnl != null) rows.push(["tk", `trade P&L ${p.pnl >= 0 ? "+" : ""}${fmtMoney(p.pnl)}`]);
+      const bx = box.getBoundingClientRect();
+      showTip(tip, box, (ev.clientX - bx.left), (Y(p.eq) / H) * (svg.getBoundingClientRect().height), rows);
+    };
+    svg.addEventListener("pointermove", onMove);
+    svg.addEventListener("pointerleave", () => {
+      tip.style.display = "none";
+      cross.setAttribute("visibility", "hidden");
+      hoverDot.setAttribute("visibility", "hidden");
+      hoverDotRing.setAttribute("visibility", "hidden");
+    });
+    box.appendChild(svg);
+  };
+
+  // ---------- R-multiple bars ----------
+  const roundedBar = (x, y, w, h, up) => {
+    // bar from baseline: rounded 4px at the data end, square at baseline
+    const r = Math.min(4, w / 2, h);
+    if (h <= 0) return el("path", { d: "" });
+    let d;
+    if (up) {
+      const top = y;
+      d = `M${x},${top + h}V${top + r}Q${x},${top} ${x + r},${top}H${x + w - r}Q${x + w},${top} ${x + w},${top + r}V${top + h}Z`;
+    } else {
+      const bot = y + h;
+      d = `M${x},${y}V${bot - r}Q${x},${bot} ${x + r},${bot}H${x + w - r}Q${x + w},${bot} ${x + w},${bot - r}V${y}Z`;
+    }
+    return el("path", { d });
+  };
+
+  const renderRChart = () => {
+    const box = $("rBox"), tip = $("rTip");
+    box.replaceChildren(); tip.style.display = "none";
+    const list = sortedTrades().filter(inRange).map(t => ({ t, r: rOf(t) })).filter(x => x.r != null && isFinite(x.r));
+    if (!list.length) {
+      const d = document.createElement("div"); d.className = "empty";
+      d.textContent = "Log trades with a planned stop to see R-multiples (profit ÷ planned risk).";
+      box.appendChild(d); return;
+    }
+    const W = Math.max(240, box.clientWidth), H = 240;
+    const padL = 40, padR = 10, padT = 14, padB = 24;
+    const iw = W - padL - padR, ih = H - padT - padB;
+    let lo = Math.min(0, ...list.map(x => x.r)), hi = Math.max(0, ...list.map(x => x.r));
+    const span = Math.max(hi - lo, 0.5); lo -= span * 0.08; hi += span * 0.08;
+    const Y = v => padT + ih - ((v - lo) / (hi - lo)) * ih;
+    const gap = 2;
+    const slot = iw / list.length;
+    const bw = Math.min(24, Math.max(3, slot - gap));
+
+    const svg = el("svg", { width: W, height: H, viewBox: `0 0 ${W} ${H}`, role: "img",
+      "aria-label": `R-multiple per trade, ${list.length} trades` });
+
+    niceTicks(lo, hi, 4).forEach(v => {
+      svg.appendChild(el("line", { x1: padL, x2: W - padR, y1: Y(v), y2: Y(v), stroke: cssVar("--grid"), "stroke-width": 1 }));
+      const t = el("text", { x: padL - 6, y: Y(v) + 4, "text-anchor": "end", class: "axis-tick" });
+      t.textContent = (v > 0 ? "+" : "") + (Math.abs(v) < 10 ? v.toFixed(1) : Math.round(v)) + "R";
+      svg.appendChild(t);
+    });
+    // zero baseline on top of gridlines
+    svg.appendChild(el("line", { x1: padL, x2: W - padR, y1: Y(0), y2: Y(0), stroke: cssVar("--baseline"), "stroke-width": 1 }));
+
+    const pos = cssVar("--accent"), neg = cssVar("--neg");
+    list.forEach((x, i) => {
+      const cx = padL + i * slot + (slot - bw) / 2;
+      const up = x.r >= 0;
+      const y0 = Y(0), yv = Y(x.r);
+      const h = Math.max(1, Math.abs(yv - y0));
+      const bar = roundedBar(cx, up ? yv : y0, bw, h, up);
+      bar.setAttribute("fill", up ? pos : neg);
+      bar.setAttribute("class", "bar-mark");
+      bar.setAttribute("tabindex", "0");
+      bar.setAttribute("role", "img");
+      bar.setAttribute("aria-label", `${x.t.symbol} ${x.t.date}: ${x.r >= 0 ? "+" : ""}${x.r.toFixed(2)}R`);
+      const show = () => {
+        const rows = [
+          ["tv", `${x.r >= 0 ? "+" : ""}${x.r.toFixed(2)}R`, up ? pos : neg],
+          ["tk", `${x.t.symbol} · ${x.t.date}`],
+          ["tk", `P&L ${pnlOf(x.t) >= 0 ? "+" : ""}${fmtMoney(pnlOf(x.t))}`]
+        ];
+        const rb = bar.getBoundingClientRect(), bb = box.getBoundingClientRect();
+        showTip(tip, box, rb.left + rb.width / 2 - bb.left, rb.top - bb.top, rows);
+      };
+      bar.addEventListener("pointermove", show);
+      bar.addEventListener("focus", show);
+      bar.addEventListener("pointerleave", () => tip.style.display = "none");
+      bar.addEventListener("blur", () => tip.style.display = "none");
+      svg.appendChild(bar);
+    });
+    box.appendChild(svg);
+  };
+
+  // ---------- journal ----------
+  $("tDate").value = todayISO();
+  $("tradeForm").addEventListener("submit", ev => {
+    ev.preventDefault();
+    const num = id => { const v = parseFloat($(id).value); return isFinite(v) ? v : null; };
+    const t = {
+      id: trades.length ? Math.max(...trades.map(x => x.id)) + 1 : 1,
+      date: $("tDate").value,
+      symbol: $("tSymbol").value.trim().toUpperCase(),
+      side: $("tSide").value === "short" ? "short" : "long",
+      qty: num("tQty"), entry: num("tEntry"), exit: num("tExit"),
+      stop: num("tStop"), fees: num("tFees") || 0,
+      dayTrade: $("tDayTrade").checked,
+      setup: $("tSetup").value.trim(),
+      notes: $("tNotes").value.trim()
+    };
+    if (t.qty == null || t.qty <= 0) {
+      $("tQty").setCustomValidity("Quantity must be greater than 0");
+      $("tQty").reportValidity(); $("tQty").setCustomValidity("");
+      return;
+    }
+    if (!t.date || !t.symbol || t.entry == null || t.exit == null) return;
+    trades.push(t);
+    save(LS.trades, trades);
+    ["tSymbol", "tQty", "tEntry", "tExit", "tStop", "tNotes"].forEach(id => $(id).value = "");
+    renderAll();
+  });
+
+  const renderJournal = () => {
+    const body = $("journalBody");
+    body.replaceChildren();
+    const list = sortedTrades().filter(inRange).reverse(); // newest first
+    $("journalEmpty").style.display = list.length ? "none" : "";
+    list.forEach(t => {
+      const tr = document.createElement("tr");
+      const td = (txt, cls) => {
+        const c = document.createElement("td");
+        if (cls) c.className = cls;
+        c.textContent = txt;
+        tr.appendChild(c);
+        return c;
+      };
+      td(t.date); td(t.symbol); td(t.side);
+      td(fmtNum(t.qty), "num"); td(fmtNum(t.entry), "num"); td(fmtNum(t.exit), "num");
+      td(t.stop == null ? "—" : fmtNum(t.stop), "num"); td(fmtNum(t.fees || 0), "num");
+      const p = pnlOf(t);
+      td((p >= 0 ? "+" : "") + fmtMoney(p), "num " + (p >= 0 ? "pnl-pos" : "pnl-neg"));
+      const r = rOf(t);
+      td(r == null ? "—" : (r >= 0 ? "+" : "") + r.toFixed(2) + "R", "num");
+      td(t.setup || "—"); td(t.notes || "");
+      const act = document.createElement("td");
+      const del = document.createElement("button");
+      del.className = "mini"; del.type = "button"; del.textContent = "✕";
+      del.setAttribute("aria-label", `Delete ${t.symbol} trade on ${t.date}`);
+      del.addEventListener("click", () => {
+        trades = trades.filter(x => x.id !== t.id);
+        save(LS.trades, trades);
+        renderAll();
+      });
+      act.appendChild(del); tr.appendChild(act);
+      body.appendChild(tr);
+    });
+  };
+
+  // ---------- CSV ----------
+  const CSV_HEADER = ["date","symbol","side","qty","entry","exit","stop","fees","day_trade","setup","notes"];
+  const csvField = v => {
+    const s = String(v ?? "");
+    return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  $("exportBtn").addEventListener("click", () => {
+    const rows = [CSV_HEADER.join(",")];
+    sortedTrades().forEach(t => rows.push([
+      t.date, t.symbol, t.side, t.qty, t.entry, t.exit,
+      t.stop == null ? "" : t.stop, t.fees || 0, t.dayTrade ? "yes" : "no", t.setup || "", t.notes || ""
+    ].map(csvField).join(",")));
+    const blob = new Blob([rows.join("\n") + "\n"], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "trades.csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  const parseCSV = text => {
+    const rows = []; let row = [], field = "", inQ = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (inQ) {
+        if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else inQ = false; }
+        else field += c;
+      } else if (c === '"') inQ = true;
+      else if (c === ",") { row.push(field); field = ""; }
+      else if (c === "\n" || c === "\r") {
+        if (c === "\r" && text[i + 1] === "\n") i++;
+        row.push(field); field = "";
+        if (row.length > 1 || row[0] !== "") rows.push(row);
+        row = [];
+      } else field += c;
+    }
+    if (field !== "" || row.length) { row.push(field); if (row.length > 1 || row[0] !== "") rows.push(row); }
+    return rows;
+  };
+  $("importBtn").addEventListener("click", () => $("importFile").click());
+  $("importFile").addEventListener("change", ev => {
+    const file = ev.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const rows = parseCSV(String(reader.result));
+      if (!rows.length) return;
+      const header = rows[0].map(h => h.trim().toLowerCase());
+      const idx = name => header.indexOf(name);
+      if (idx("date") < 0 || idx("symbol") < 0) { alert("CSV needs at least date,symbol,side,qty,entry,exit columns."); return; }
+      let nextId = trades.length ? Math.max(...trades.map(x => x.id)) + 1 : 1;
+      const imported = [];
+      rows.slice(1).forEach(r => {
+        const g = name => { const i = idx(name); return i >= 0 ? (r[i] ?? "").trim() : ""; };
+        const numOr = (name, fb) => { const v = parseFloat(g(name)); return isFinite(v) ? v : fb; };
+        const t = {
+          id: nextId++,
+          date: g("date"), symbol: g("symbol").toUpperCase(),
+          side: g("side").toLowerCase() === "short" ? "short" : "long",
+          qty: numOr("qty", null), entry: numOr("entry", null), exit: numOr("exit", null),
+          stop: numOr("stop", null), fees: numOr("fees", 0),
+          dayTrade: /^(yes|true|1|y)$/i.test(g("day_trade")),
+          setup: g("setup"), notes: g("notes")
+        };
+        if (t.date && t.symbol && t.qty != null && t.qty > 0 && t.entry != null && t.exit != null) imported.push(t);
+      });
+      if (!imported.length) { alert("No valid trade rows found."); return; }
+      if (trades.length && !confirm(`Add ${imported.length} imported trades to the ${trades.length} already here? (Importing the same file twice duplicates trades.)`)) return;
+      trades = trades.concat(imported);
+      save(LS.trades, trades);
+      renderAll();
+    };
+    reader.readAsText(file);
+    ev.target.value = "";
+  });
+
+  $("clearBtn").addEventListener("click", () => {
+    if (!trades.length) return;
+    if (confirm(`Delete all ${trades.length} trades? Export a CSV first if you want a backup.`)) {
+      trades = [];
+      save(LS.trades, trades);
+      renderAll();
+    }
+  });
+
+  // ---------- open positions ----------
+  $("posForm").addEventListener("submit", ev => {
+    ev.preventDefault();
+    const num = id => { const v = parseFloat($(id).value); return isFinite(v) ? v : null; };
+    const p = {
+      id: positions.length ? Math.max(...positions.map(x => x.id)) + 1 : 1,
+      symbol: $("pSymbol").value.trim().toUpperCase(),
+      side: $("pSide").value === "short" ? "short" : "long",
+      qty: num("pQty"), cost: num("pCost"), stop: num("pStop"),
+      last: num("pLast"),
+      opened: todayISO()
+    };
+    if (p.qty == null || p.qty <= 0) {
+      $("pQty").setCustomValidity("Quantity must be greater than 0");
+      $("pQty").reportValidity(); $("pQty").setCustomValidity("");
+      return;
+    }
+    if (!p.symbol || p.cost == null) return;
+    if (p.last == null) p.last = p.cost;
+    positions.push(p);
+    save(LS.positions, positions);
+    ["pSymbol", "pQty", "pCost", "pStop", "pLast"].forEach(id => $(id).value = "");
+    renderAll();
+  });
+
+  const posUnrealized = p => (p.side === "short" ? -1 : 1) * (p.last - p.cost) * p.qty;
+  const posRiskToStop = p => {
+    if (p.stop == null || !isFinite(p.stop)) return null;
+    const dir = p.side === "short" ? -1 : 1;
+    return Math.max(0, dir * (p.last - p.stop) * p.qty);
+  };
+
+  const renderPositions = () => {
+    const body = $("posBody");
+    body.replaceChildren();
+    $("posEmpty").style.display = positions.length ? "none" : "";
+    $("posTotals").style.display = positions.length ? "" : "none";
+    let totVal = 0, totPnl = 0, totRisk = 0, anyStop = false;
+    positions.forEach(p => {
+      const tr = document.createElement("tr");
+      const td = (txt, cls) => {
+        const c = document.createElement("td");
+        if (cls) c.className = cls;
+        c.textContent = txt;
+        tr.appendChild(c);
+        return c;
+      };
+      td(p.symbol); td(p.side);
+      td(fmtNum(p.qty), "num"); td(fmtNum(p.cost), "num");
+      // editable last price
+      const lastTd = document.createElement("td"); lastTd.className = "num";
+      const lastIn = document.createElement("input");
+      lastIn.type = "number"; lastIn.step = "any"; lastIn.min = "0";
+      lastIn.value = p.last; lastIn.style.width = "84px"; lastIn.style.textAlign = "right";
+      lastIn.setAttribute("aria-label", `Last price for ${p.symbol}`);
+      lastIn.addEventListener("change", () => {
+        const v = parseFloat(lastIn.value);
+        if (isFinite(v) && v >= 0) { p.last = v; save(LS.positions, positions); renderPositions(); }
+      });
+      lastTd.appendChild(lastIn); tr.appendChild(lastTd);
+      const val = p.last * p.qty;
+      const upl = posUnrealized(p);
+      const risk = posRiskToStop(p);
+      totVal += val; totPnl += upl;
+      if (risk != null) { totRisk += risk; anyStop = true; }
+      td(fmtMoney(val), "num");
+      td((upl >= 0 ? "+" : "") + fmtMoney(upl), "num " + (upl >= 0 ? "pnl-pos" : "pnl-neg"));
+      td(risk == null ? "no stop ⚠" : fmtMoney(risk), "num");
+      const act = document.createElement("td");
+      const close = document.createElement("button");
+      close.className = "mini"; close.type = "button"; close.textContent = "Close";
+      close.style.color = "var(--accent)";
+      close.setAttribute("aria-label", `Close ${p.symbol} position`);
+      close.addEventListener("click", () => {
+        const raw = prompt(`Exit price for ${p.symbol} (${p.qty} @ ${p.cost})`, String(p.last));
+        if (raw == null) return;
+        const exit = parseFloat(raw);
+        if (!isFinite(exit) || exit < 0) return;
+        trades.push({
+          id: trades.length ? Math.max(...trades.map(x => x.id)) + 1 : 1,
+          date: todayISO(), symbol: p.symbol, side: p.side,
+          qty: p.qty, entry: p.cost, exit, stop: p.stop, fees: 0,
+          dayTrade: p.opened === todayISO(), setup: "", notes: "closed from positions tracker"
+        });
+        positions = positions.filter(x => x.id !== p.id);
+        save(LS.trades, trades);
+        save(LS.positions, positions);
+        renderAll();
+      });
+      const del = document.createElement("button");
+      del.className = "mini"; del.type = "button"; del.textContent = "✕";
+      del.setAttribute("aria-label", `Remove ${p.symbol} position without logging`);
+      del.addEventListener("click", () => {
+        if (!confirm(`Remove ${p.symbol} without logging a trade?`)) return;
+        positions = positions.filter(x => x.id !== p.id);
+        save(LS.positions, positions);
+        renderAll();
+      });
+      act.append(close, del); tr.appendChild(act);
+      body.appendChild(tr);
+    });
+    if (positions.length) {
+      $("posValTotal").textContent = fmtMoney(totVal);
+      const pnlEl = $("posPnlTotal");
+      pnlEl.textContent = (totPnl >= 0 ? "+" : "") + fmtMoney(totPnl);
+      pnlEl.className = totPnl >= 0 ? "pnl-pos" : "pnl-neg";
+      const eq = equityNow();
+      const heatPct = eq > 0 ? (totRisk / eq) * 100 : 0;
+      $("posHeat").textContent = anyStop
+        ? `${fmtMoney(totRisk)} (${heatPct.toFixed(1)}% of equity)${heatPct > 3 * settings.riskPct ? " ⚠ over 3× your per-trade risk" : ""}`
+        : "unknown — positions missing stops ⚠";
+    }
+  };
+
+  // ---------- filters ----------
+  document.querySelectorAll(".filters button").forEach(b => {
+    b.addEventListener("click", () => {
+      range = b.dataset.range;
+      document.querySelectorAll(".filters button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+      renderAll();
+    });
+  });
+
+  // ---------- checklist ----------
+  const CHECK_ITEMS = [
+    "Marked key levels & checked the economic calendar",
+    "Wrote today’s max loss and trade count — and will honor them",
+    "Only A-grade setups from my playbook (no boredom trades)",
+    "Journal is open — every trade gets logged, win or lose",
+    "If I hit my daily loss limit, I am DONE. No revenge trading."
+  ];
+  const renderChecklist = () => {
+    const today = todayISO();
+    $("checkDate").textContent = "· " + today;
+    const all = load(LS.checks, {});
+    const state = all[today] || CHECK_ITEMS.map(() => false);
+    const wrap = $("checklist");
+    wrap.replaceChildren();
+    CHECK_ITEMS.forEach((item, i) => {
+      const lab = document.createElement("label"); lab.className = "check";
+      const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = !!state[i];
+      const sp = document.createElement("span"); sp.textContent = item;
+      cb.addEventListener("change", () => {
+        state[i] = cb.checked;
+        save(LS.checks, { [today]: state });   // keep only today
+        renderChecklistSummary(state);
+      });
+      lab.append(cb, sp); wrap.appendChild(lab);
+    });
+    renderChecklistSummary(state);
+  };
+  const renderChecklistSummary = state => {
+    const done = state.filter(Boolean).length;
+    $("checkSummary").textContent = done === CHECK_ITEMS.length
+      ? "✓ All clear — you’ve earned the right to take a trade."
+      : `${done} of ${CHECK_ITEMS.length} complete — no entries until all five are checked.`;
+  };
+
+  // ---------- render all ----------
+  const renderAll = () => {
+    renderKpis();
+    renderGuardrails();
+    renderSizer();
+    renderEquity();
+    renderRChart();
+    renderJournal();
+    renderPositions();
+  };
+  renderChecklist();
+  renderAll();
+
+  let rt;
+  addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { renderEquity(); renderRChart(); }, 150); });
+})();
+</script>
+</body>
+</html>
